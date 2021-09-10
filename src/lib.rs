@@ -1,9 +1,11 @@
+use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
 use std::io::prelude::*;
 use std::net::TcpStream;
+use std::str::FromStr;
 
-#[derive(Serialize)]
+#[derive(Debug, Serialize, PartialEq)]
 pub struct CMD3G {
     x: u16,
     y: u16,
@@ -48,7 +50,9 @@ impl TgtStatus {
     }
 }
 
+#[derive(Debug, PartialEq)]
 pub enum RhothorCommand {
+    None,
     ListOpen,
     ListClose,
     Jump(Position),
@@ -70,7 +74,36 @@ pub enum RhothorCommand {
     SetLoop,
     DoLoop,
 }
+impl FromStr for RhothorCommand {
+    type Err = ();
 
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let re = Regex::new(r"(?P<command>[A-z]+)\((?P<args>(.*))\)").unwrap();
+        let caps = re.captures(s).unwrap();
+        let command = match caps.name("command").unwrap().as_str() {
+            "rtJumpTo" => {
+                let pos = caps
+                    .name("args")
+                    .unwrap()
+                    .as_str()
+                    .split(',')
+                    .collect::<Vec<&str>>();
+                if pos.len() != 2 {
+                    return Err(());
+                }
+                RhothorCommand::Jump(Position::new(
+                    pos.get(0).unwrap().parse::<f64>().unwrap(),
+                    pos.get(1).unwrap().parse::<f64>().unwrap(),
+                ))
+            }
+            _ => return Err(()),
+        };
+
+        Ok(command)
+    }
+}
+
+#[derive(Debug, PartialEq)]
 pub struct Position {
     x: f64,
     y: f64,
@@ -132,4 +165,31 @@ pub fn exchange(queries: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<Ve
     let mut reply = [0_u8; 128];
     let n = stream.read(&mut reply)?;
     Ok(reply[..n].to_vec())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_jump_command() {
+        let got = build_commandlist(&vec![RhothorCommand::Jump(Position::new(0.0, 0.0))]);
+        let want = vec![CMD3G::new(0, 0, 0, 0, 0x04, 1)];
+        assert_eq!(got.len(), want.len());
+        assert!(got.iter().zip(want.iter()).all(|(a, b)| a == b));
+    }
+
+    #[test]
+    fn parse_jump() {
+        let got = RhothorCommand::from_str("rtJumpTo(1234.5,777.42)").unwrap();
+        let want = RhothorCommand::Jump(Position::new(1234.5, 777.42));
+        assert_eq!(got, want);
+
+        let got = RhothorCommand::from_str("rtJumpTo(-1234,777)").unwrap();
+        let want = RhothorCommand::Jump(Position::new(-1234.0, 777.0));
+        assert_eq!(got, want);
+
+        let got = RhothorCommand::from_str("rtJumpTo(1234.5,777.42,4.8)");
+        assert_eq!(got, Err(()));
+    }
 }

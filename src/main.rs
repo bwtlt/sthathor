@@ -34,10 +34,5 @@ fn main() -> Result<(), Box<dyn Error>> {
     let reply = exchange(&query, &mut stream)?;
     println!("reply: {:?}", reply);
 
-    let command = RhothorCommand::Jump(Position::new(0.0, 0.0));
-    let commands = vec![command];
-    let reply = exchange(&build_commandlist(&commands), &mut stream)?;
-    println!("reply: {:?}", reply);
-
     Ok(())
 }
