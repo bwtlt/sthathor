@@ -48,11 +48,60 @@ impl TgtStatus {
     }
 }
 
-pub enum TrajectoryType {
+pub enum CommandType {
+    ListOpen,
+    ListClose,
     Jump,
+    SetIO,
+    SetAnalog,
+    Arc,
+    Line,
+    WaitIO,
     Move,
+    SetSpeed,
+    SetJumpSpeed,
+    Sleep,
+    Burst,
+    SetLaser,
+    SetLaserTumes,
+    SetTarget,
+    WhileIO,
+    DoWhile,
+    SetLoop,
+    DoLoop,
 }
-pub fn build_trajectory(trajectory: TrajectoryType) -> Vec<CMD3G> {
+pub struct RhothorCommand {
+    cmd_type: CommandType,
+    args: Vec<String>,
+}
+impl RhothorCommand {
+    pub fn new(cmd_type: CommandType, args: Vec<String>) -> RhothorCommand {
+        RhothorCommand { cmd_type, args }
+    }
+}
+
+struct Position {
+    x: f64,
+    y: f64,
+}
+struct RawPosition {
+    x: u16,
+    y: u16,
+    xh: u8,
+    yh: u8,
+}
+impl Position {
+    pub fn to_raw(&self) -> RawPosition {
+        RawPosition {
+            x: ((self.x * 1000.0).round() as u32 & 0xFFFF) as u16,
+            y: ((self.y * 1000.0).round() as u32 & 0xFFFF) as u16,
+            xh: ((self.x * 1000.0).round() as u32 >> 16) as u8,
+            yh: ((self.y * 1000.0).round() as u32 >> 16) as u8,
+        }
+    }
+}
+
+pub fn build_commandlist(command_vec: &Vec<RhothorCommand>) -> Vec<CMD3G> {
     let mut command_buffer = vec![CMD3G::new(0, 0, 0, 0, 0x4A, 1)];
     let speed: u32 = 0x43960000;
     command_buffer.push(CMD3G::new(
@@ -63,12 +112,19 @@ pub fn build_trajectory(trajectory: TrajectoryType) -> Vec<CMD3G> {
         0x0b,
         1,
     ));
-    match trajectory {
-        TrajectoryType::Jump => {
-            let position = 2184;
-            command_buffer.push(CMD3G::new(position, position, 0, 0, 0x04, 1));
+    for command in command_vec {
+        match command.cmd_type {
+            CommandType::Jump => {
+                assert_eq!(command.args.len(), 2);
+                let pos = Position {
+                    x: command.args.get(0).unwrap().parse::<f64>().unwrap(),
+                    y: command.args.get(1).unwrap().parse::<f64>().unwrap(),
+                }
+                .to_raw();
+                command_buffer.push(CMD3G::new(pos.x, pos.y, pos.xh, pos.yh, 0x04, 1));
+            }
+            _ => (),
         }
-        TrajectoryType::Move => (),
     }
     command_buffer
 }

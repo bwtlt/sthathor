@@ -34,13 +34,10 @@ fn main() -> Result<(), Box<dyn Error>> {
     let reply = exchange(&query, &mut stream)?;
     println!("reply: {:?}", reply);
 
-    let status = get_status(&mut stream)?;
-    println!("scanners are at {:?}", status.get_position());
-
-    let reply = exchange(&build_trajectory(TrajectoryType::Jump), &mut stream)?;
+    let command = RhothorCommand::new(CommandType::Jump, vec!["0".to_string(), "0".to_string()]);
+    let commands = vec![command];
+    let reply = exchange(&build_commandlist(&commands), &mut stream)?;
     println!("reply: {:?}", reply);
-    let status = get_status(&mut stream)?;
-    println!("scanners are at {:?}", status.get_position());
 
     Ok(())
 }
