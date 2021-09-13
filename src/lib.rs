@@ -1,9 +1,25 @@
 use regex::Regex;
 use serde::Deserialize;
 use serde::Serialize;
+use std::fmt;
 use std::io::prelude::*;
 use std::net::TcpStream;
 use std::str::FromStr;
+
+#[derive(Debug, PartialEq)]
+pub enum AppError {
+    ParseError,
+}
+
+impl std::error::Error for AppError {}
+
+impl fmt::Display for AppError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            AppError::ParseError => write!(f, "Parse Error"),
+        }
+    }
+}
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct CMD3G {
@@ -181,9 +197,9 @@ pub enum CMD3G_OPCODE {
     INTGETIP = 0xc9,
 }
 impl FromStr for RhothorCommand {
-    type Err = ();
+    type Err = AppError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(s: &str) -> Result<Self, AppError> {
         let re = Regex::new(r"(?P<command>[A-z]+)\((?P<args>(.*))\)").unwrap();
         let caps = re.captures(s).unwrap();
         let command = match caps.name("command").unwrap().as_str() {
@@ -195,14 +211,18 @@ impl FromStr for RhothorCommand {
                     .split(',')
                     .collect::<Vec<&str>>();
                 if pos.len() != 2 {
-                    return Err(());
+                    return Err(AppError::ParseError);
                 }
-                RhothorCommand::Jump(Position::new(
-                    pos.get(0).unwrap().parse::<f64>().unwrap(),
-                    pos.get(1).unwrap().parse::<f64>().unwrap(),
-                ))
+                let (x, y) = match (
+                    pos.get(0).unwrap().parse::<f64>(),
+                    pos.get(1).unwrap().parse::<f64>(),
+                ) {
+                    (Ok(x), Ok(y)) => (x, y),
+                    _ => return Err(AppError::ParseError),
+                };
+                RhothorCommand::Jump(Position::new(x, y))
             }
-            _ => return Err(()),
+            _ => return Err(AppError::ParseError),
         };
 
         Ok(command)
@@ -437,15 +457,33 @@ mod tests {
 
     #[test]
     fn parse_jump() {
-        let got = RhothorCommand::from_str("rtJumpTo(1234.5,777.42)").unwrap();
-        let want = RhothorCommand::Jump(Position::new(1234.5, 777.42));
-        assert_eq!(got, want);
+        struct TestCase {
+            got: Result<RhothorCommand, AppError>,
+            want: Result<RhothorCommand, AppError>,
+        }
+        let test_cases = vec![
+            TestCase {
+                got: Ok(RhothorCommand::from_str("rtJumpTo(1234.5,777.42)").unwrap()),
+                want: Ok(RhothorCommand::Jump(Position::new(1234.5, 777.42))),
+            },
+            TestCase {
+                got: Ok(RhothorCommand::from_str("rtJumpTo(-1234,777)").unwrap()),
+                want: Ok(RhothorCommand::Jump(Position::new(-1234.0, 777.0))),
+            },
+            TestCase {
+                // two many arguments
+                got: RhothorCommand::from_str("rtJumpTo(1234.5,777.42,4.8)"),
+                want: Err(AppError::ParseError),
+            },
+            TestCase {
+                // syntax error
+                got: RhothorCommand::from_str("rtJumpTo(1234.O,4.8)"),
+                want: Err(AppError::ParseError),
+            },
+        ];
 
-        let got = RhothorCommand::from_str("rtJumpTo(-1234,777)").unwrap();
-        let want = RhothorCommand::Jump(Position::new(-1234.0, 777.0));
-        assert_eq!(got, want);
-
-        let got = RhothorCommand::from_str("rtJumpTo(1234.5,777.42,4.8)");
-        assert_eq!(got, Err(()));
+        for test in test_cases {
+            assert_eq!(test.got, test.want);
+        }
     }
 }
