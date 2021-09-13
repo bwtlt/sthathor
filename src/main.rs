@@ -30,7 +30,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let socket_address = SocketAddr::new(IpAddr::V4(ip_address), port);
     let mut stream = TcpStream::connect_timeout(&socket_address, Duration::new(5, 0))?;
 
-    let query = vec![CMD3G::new(0, 0, 0, 0, 0xC5, 0)];
+    let query = vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::INTGTID, 0)];
     let reply = exchange(&query, &mut stream)?;
     println!("reply: {:?}", reply);
 
