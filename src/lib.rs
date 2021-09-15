@@ -41,6 +41,16 @@ impl CMD3G {
             target,
         }
     }
+    pub fn new_movement(pos: &RawPosition, op_code: CMD3G_OPCODE, target: u8) -> CMD3G {
+        CMD3G {
+            x: pos.x,
+            y: pos.y,
+            xh: pos.xh,
+            yh: pos.yh,
+            op_code,
+            target,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -69,7 +79,7 @@ impl TgtStatus {
 #[derive(Debug, PartialEq)]
 pub enum RhothorCommand {
     None,
-    ListOpen,
+    ListOpen(u32),
     ListClose,
     Jump(Position),
     SetIO,
@@ -200,28 +210,44 @@ impl FromStr for RhothorCommand {
     type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, AppError> {
+        fn parse_position(s: &str) -> Result<Position, AppError> {
+            let pos = s.split(',').collect::<Vec<&str>>();
+            if pos.len() != 2 {
+                return Err(AppError::ParseError);
+            }
+            match (
+                pos.get(0).unwrap().parse::<f64>(),
+                pos.get(1).unwrap().parse::<f64>(),
+            ) {
+                (Ok(x), Ok(y)) => Ok(Position::new(x, y)),
+                _ => Err(AppError::ParseError),
+            }
+        }
+
+        fn parse_f32(s: &str) -> Result<f32, AppError> {
+            match s.parse::<f32>() {
+                Ok(val) => Ok(val),
+                _ => Err(AppError::ParseError),
+            }
+        }
+
+        fn parse_int(s: &str) -> Result<u32, AppError> {
+            match s.parse::<u32>() {
+                Ok(val) => Ok(val),
+                _ => Err(AppError::ParseError),
+            }
+        }
+
         let re = Regex::new(r"(?P<command>[A-z]+)\((?P<args>(.*))\)").unwrap();
         let caps = re.captures(s).unwrap();
+        let args = caps.name("args").unwrap().as_str();
         let command = match caps.name("command").unwrap().as_str() {
-            "rtJumpTo" => {
-                let pos = caps
-                    .name("args")
-                    .unwrap()
-                    .as_str()
-                    .split(',')
-                    .collect::<Vec<&str>>();
-                if pos.len() != 2 {
-                    return Err(AppError::ParseError);
-                }
-                let (x, y) = match (
-                    pos.get(0).unwrap().parse::<f64>(),
-                    pos.get(1).unwrap().parse::<f64>(),
-                ) {
-                    (Ok(x), Ok(y)) => (x, y),
-                    _ => return Err(AppError::ParseError),
-                };
-                RhothorCommand::Jump(Position::new(x, y))
-            }
+            "rtListOpen" => RhothorCommand::ListOpen(parse_int(args)?),
+            "rtListClose" => RhothorCommand::ListClose,
+            "rtJumpTo" => RhothorCommand::Jump(parse_position(args)?),
+            "rtMoveTo" => RhothorCommand::Move(parse_position(args)?),
+            "rtLineTo" => RhothorCommand::Line(parse_position(args)?),
+            "rtSetSpeed" => RhothorCommand::SetSpeed(parse_f32(args)?),
             _ => return Err(AppError::ParseError),
         };
 
@@ -256,15 +282,11 @@ impl Position {
 
 fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
     match command {
-        RhothorCommand::ListOpen => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::ListClose => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        RhothorCommand::ListOpen(_) => vec![], //TODO
+        RhothorCommand::ListClose => vec![],   //TODO
         RhothorCommand::Jump(pos) => {
-            let pos = pos.to_raw();
-            vec![CMD3G::new(
-                pos.x,
-                pos.y,
-                pos.xh,
-                pos.yh,
+            vec![CMD3G::new_movement(
+                &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_JUMPTO,
                 TARGET,
             )]
@@ -273,16 +295,8 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
         RhothorCommand::SetAnalog => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::Arc => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::Circle(center, angle) => {
-            let center = center.to_raw();
             vec![
-                CMD3G::new(
-                    center.x,
-                    center.y,
-                    center.xh,
-                    center.yh,
-                    CMD3G_OPCODE::CMD3G_CIRCLE,
-                    TARGET,
-                ),
+                CMD3G::new_movement(&center.to_raw(), CMD3G_OPCODE::CMD3G_CIRCLE, TARGET),
                 CMD3G::new(
                     (angle.to_bits() & 0xFFFF) as u16,
                     ((angle.to_bits() & 0xFFFF0000) >> 16) as u16,
@@ -294,24 +308,16 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             ]
         }
         RhothorCommand::Line(pos) => {
-            let pos = pos.to_raw();
-            vec![CMD3G::new(
-                pos.x,
-                pos.y,
-                pos.xh,
-                pos.yh,
+            vec![CMD3G::new_movement(
+                &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_LINETO,
                 TARGET,
             )]
         }
         RhothorCommand::WaitIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::Move(pos) => {
-            let pos = pos.to_raw();
-            vec![CMD3G::new(
-                pos.x,
-                pos.y,
-                pos.xh,
-                pos.yh,
+            vec![CMD3G::new_movement(
+                &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_MOVETO,
                 TARGET,
             )]
@@ -471,6 +477,19 @@ mod tests {
                 want: Ok(RhothorCommand::Jump(Position::new(-1234.0, 777.0))),
             },
             TestCase {
+                got: Ok(RhothorCommand::from_str("rtSetSpeed(1200)").unwrap()),
+                want: Ok(RhothorCommand::SetSpeed(1200.0)),
+            },
+            TestCase {
+                got: RhothorCommand::from_str("rtSetSpeed()"),
+                want: Err(AppError::ParseError),
+            },
+            TestCase {
+                // two many arguments
+                got: RhothorCommand::from_str("rtSetSpeed(1.2, 0)"),
+                want: Err(AppError::ParseError),
+            },
+            TestCase {
                 // two many arguments
                 got: RhothorCommand::from_str("rtJumpTo(1234.5,777.42,4.8)"),
                 want: Err(AppError::ParseError),
@@ -479,6 +498,10 @@ mod tests {
                 // syntax error
                 got: RhothorCommand::from_str("rtJumpTo(1234.O,4.8)"),
                 want: Err(AppError::ParseError),
+            },
+            TestCase {
+                got: Ok(RhothorCommand::from_str("rtMoveTo(1.2,7.77)").unwrap()),
+                want: Ok(RhothorCommand::Move(Position::new(1.2, 7.77))),
             },
         ];
 
