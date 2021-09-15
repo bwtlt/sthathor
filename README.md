@@ -25,7 +25,26 @@ Download `rustup`: https://static.rust-lang.org/rustup/dist/x86_64-pc-windows-ms
 
     ```
     cd rusthor
-    cargo build
+    cargo build # for debug
+    cargo build --release # for release
     ```
 
 ### Run rusthor
+
+1. Print help information:
+    ```
+    $ ./target/debug/rusthor --help
+    rusthor 0.1.0
+    bwatelet
+    Rhothor clone in Rust.
+    
+    USAGE:
+        rusthor <IP_ADDRESS>
+    
+    FLAGS:
+        -h, --help       Prints help information
+        -V, --version    Prints version information
+    
+    ARGS:
+        <IP_ADDRESS>    Scanners IP address, e.g. 192.168.0.6
+    ```
