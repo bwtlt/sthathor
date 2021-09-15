@@ -6,6 +6,7 @@ use std::net::SocketAddr;
 use std::net::TcpStream;
 use std::time::Duration;
 
+use rusthor::commands;
 use rusthor::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
@@ -30,8 +31,7 @@ fn main() -> Result<(), Box<dyn Error>> {
     let socket_address = SocketAddr::new(IpAddr::V4(ip_address), port);
     let mut stream = TcpStream::connect_timeout(&socket_address, Duration::new(5, 0))?;
 
-    let query = vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::INTGTID, 0)];
-    let reply = exchange(&query, &mut stream)?;
+    let reply = exchange(&commands::get_target_id(), &mut stream)?;
     println!("reply: {:?}", reply);
 
     Ok(())
