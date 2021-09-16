@@ -1,0 +1,11 @@
+// Open List
+rtSetTarget(1);
+rtListOpen(5);
+// Configure Speed
+rtSetJumpSpeed(600)
+rtSetSpeed(600)
+
+rtJumpTo(0,-3);
+
+rtListClose();
+

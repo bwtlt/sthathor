@@ -20,6 +20,14 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .index(1)
                 .required(true),
         )
+        .arg(
+            Arg::with_name("COMMANDS_FILE")
+                .short("f")
+                .long("file")
+                .value_name("FILE")
+                .help("Load a Rhothor commands file")
+                .takes_value(true),
+        )
         .get_matches();
 
     let port = 10002;
@@ -33,6 +41,13 @@ fn main() -> Result<(), Box<dyn Error>> {
 
     let reply = exchange(&commands::get_target_id(), &mut stream)?;
     println!("reply: {:?}", reply);
+
+    if matches.is_present("COMMANDS_FILE") {
+        let commands = parse_command_file(matches.value_of("COMMANDS_FILE").unwrap())?;
+        for cmd in commands {
+            print!("command: {:?}", &cmd);
+        }
+    }
 
     Ok(())
 }

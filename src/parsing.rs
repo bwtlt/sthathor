@@ -23,7 +23,7 @@ pub enum RhothorCommand {
     Burst,
     SetLaser,
     SetLaserTimes,
-    SetTarget,
+    SetTarget(u32),
     WhileIO,
     DoWhile,
     SetLoop,
@@ -71,6 +71,8 @@ impl FromStr for RhothorCommand {
             "rtMoveTo" => RhothorCommand::Move(parse_position(args)?),
             "rtLineTo" => RhothorCommand::Line(parse_position(args)?),
             "rtSetSpeed" => RhothorCommand::SetSpeed(parse_f32(args)?),
+            "rtSetJumpSpeed" => RhothorCommand::SetJumpSpeed(parse_f32(args)?),
+            "rtSetTarget" => RhothorCommand::SetTarget(parse_int(args)?),
             _ => return Err(AppError::ParseError),
         };
 
@@ -78,12 +80,20 @@ impl FromStr for RhothorCommand {
     }
 }
 
+pub fn parse_line(s: &str) -> Result<Option<RhothorCommand>, AppError> {
+    let s = s.trim();
+    if s.starts_with("//") || s.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(RhothorCommand::from_str(s)?))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn parse_jump() {
+    fn parse_command() {
         struct TestCase {
             got: Result<RhothorCommand, AppError>,
             want: Result<RhothorCommand, AppError>,
@@ -129,5 +139,15 @@ mod tests {
         for test in test_cases {
             assert_eq!(test.got, test.want);
         }
+    }
+
+    #[test]
+    fn line_parsing() {
+        assert!(parse_line("// This is a comment").unwrap().is_none());
+        assert!(parse_line("   ").unwrap().is_none());
+        assert_eq!(
+            parse_line("rtMoveTo(1.2,3.4)").unwrap().unwrap(),
+            RhothorCommand::Move(Position::new(1.2, 3.4))
+        );
     }
 }
