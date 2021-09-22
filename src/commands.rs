@@ -198,9 +198,42 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
                 TARGET,
             )]
         }
-        RhothorCommand::SetIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::SetAnalog => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::Arc => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        RhothorCommand::SetIO(value, mask) => vec![CMD3G::new(
+            *value,
+            *mask,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_SETIO,
+            TARGET,
+        )],
+        RhothorCommand::SetAnalog(value, mask) => vec![CMD3G::new(
+            *value,
+            *mask,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_SETANA,
+            TARGET,
+        )],
+        RhothorCommand::Arc(center, bf) => {
+            if bf.abs() < 0.000001 {
+                return vec![CMD3G::new_movement(
+                    &center.to_raw(),
+                    CMD3G_OPCODE::CMD3G_MOVETO,
+                    TARGET,
+                )];
+            }
+            vec![
+                CMD3G::new_movement(&center.to_raw(), CMD3G_OPCODE::CMD3G_ARCLINE, TARGET),
+                CMD3G::new(
+                    ((bf.to_bits() & 0xFFFF0000) >> 16) as u16,
+                    0,
+                    0,
+                    0,
+                    CMD3G_OPCODE::CMD3G_PARAMS,
+                    TARGET,
+                ),
+            ]
+        }
         RhothorCommand::Circle(center, angle) => {
             vec![
                 CMD3G::new_movement(&center.to_raw(), CMD3G_OPCODE::CMD3G_CIRCLE, TARGET),
@@ -245,10 +278,38 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_JUMPSPEED,
             TARGET,
         )],
-        RhothorCommand::Sleep => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::Burst => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::SetLaser => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::SetLaserTimes => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        RhothorCommand::Sleep(time) => vec![CMD3G::new(
+            *time,
+            0,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_SLEEP,
+            TARGET,
+        )],
+        RhothorCommand::Burst(time) => vec![CMD3G::new(
+            *time,
+            0,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_BURST,
+            TARGET,
+        )],
+        RhothorCommand::SetLaser(on) => vec![CMD3G::new(
+            *on as u16,
+            0,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_SETLIDLE,
+            TARGET,
+        )],
+        RhothorCommand::SetLaserTimes(on_delay, off_delay) => vec![CMD3G::new(
+            *on_delay,
+            *off_delay,
+            0,
+            0,
+            CMD3G_OPCODE::CMD3G_SETDELAYS,
+            TARGET,
+        )],
         RhothorCommand::WhileIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::DoWhile => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::SetLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
@@ -344,6 +405,50 @@ mod tests {
                     CMD3G::new(0xFE0C, 500, 0xFF, 0, CMD3G_OPCODE::CMD3G_CIRCLE, TARGET),
                     CMD3G::new(0, 0x43B4, 0, 0, CMD3G_OPCODE::CMD3G_PARAMS, TARGET),
                 ],
+            },
+            TestCase {
+                rhothor_cmd: RhothorCommand::Arc(Position::new(-0.5, 0.5), 360.0),
+                cmd3g_cmd: vec![
+                    CMD3G::new(0xFE0C, 500, 0xFF, 0, CMD3G_OPCODE::CMD3G_ARCLINE, TARGET),
+                    CMD3G::new(0x43B4, 0, 0, 0, CMD3G_OPCODE::CMD3G_PARAMS, TARGET),
+                ],
+            },
+            TestCase {
+                rhothor_cmd: RhothorCommand::Arc(Position::new(-0.5, 0.5), 0.0000001),
+                cmd3g_cmd: vec![CMD3G::new(
+                    0xFE0C,
+                    500,
+                    0xFF,
+                    0,
+                    CMD3G_OPCODE::CMD3G_MOVETO,
+                    TARGET,
+                )],
+            },
+            TestCase {
+                rhothor_cmd: RhothorCommand::SetIO(512, 1024),
+                cmd3g_cmd: vec![CMD3G::new(
+                    512,
+                    1024,
+                    0,
+                    0,
+                    CMD3G_OPCODE::CMD3G_SETIO,
+                    TARGET,
+                )],
+            },
+            TestCase {
+                rhothor_cmd: RhothorCommand::SetAnalog(1024, 512),
+                cmd3g_cmd: vec![CMD3G::new(
+                    1024,
+                    512,
+                    0,
+                    0,
+                    CMD3G_OPCODE::CMD3G_SETANA,
+                    TARGET,
+                )],
+            },
+            TestCase {
+                rhothor_cmd: RhothorCommand::Sleep(500),
+                cmd3g_cmd: vec![CMD3G::new(500, 0, 0, 0, CMD3G_OPCODE::CMD3G_SLEEP, TARGET)],
             },
         ];
         for test in test_cases {
