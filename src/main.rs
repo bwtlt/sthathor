@@ -43,10 +43,11 @@ fn main() -> Result<(), Box<dyn Error>> {
     println!("reply: {:?}", reply);
 
     if matches.is_present("COMMANDS_FILE") {
-        let commands = parse_command_file(matches.value_of("COMMANDS_FILE").unwrap())?;
-        for cmd in commands {
-            print!("command: {:?}", &cmd);
-        }
+        let command_list = commands::build_commandlist(&parse_command_file(
+            matches.value_of("COMMANDS_FILE").unwrap(),
+        )?);
+        let reply = exchange(&command_list, &mut stream)?;
+        println!("reply: {:?}", reply);
     }
 
     Ok(())
