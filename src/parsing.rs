@@ -3,6 +3,7 @@ use crate::AppError;
 use regex::Regex;
 use std::str::FromStr;
 
+/// Representation of a Rhothor command with its parameters
 #[derive(Debug, PartialEq)]
 pub enum RhothorCommand {
     None,
@@ -29,6 +30,7 @@ pub enum RhothorCommand {
     SetLoop,
     DoLoop,
 }
+/// Parse a Rhothor command string (e.g. "rtMoveTo(3.0, 4.5)") into the corresponding enum
 impl FromStr for RhothorCommand {
     type Err = AppError;
 
@@ -80,6 +82,7 @@ impl FromStr for RhothorCommand {
     }
 }
 
+/// Parse a Rhothor script line, ditching comments and empty lines
 pub fn parse_line(s: &str) -> Result<Option<RhothorCommand>, AppError> {
     let s = s.trim();
     if s.starts_with("//") || s.is_empty() {

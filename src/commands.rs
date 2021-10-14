@@ -2,6 +2,7 @@ use crate::parsing::RhothorCommand;
 use serde::Deserialize;
 use serde::Serialize;
 
+/// Atomic Newson command
 #[derive(Debug, Serialize, PartialEq)]
 pub struct CMD3G {
     x: u16,
@@ -34,6 +35,7 @@ impl CMD3G {
     }
 }
 
+/// Target status, including positions, inputs/outputs state, etc.
 #[derive(Debug, Deserialize)]
 pub struct TgtStatus {
     inputs: u16,
@@ -61,6 +63,7 @@ pub const TARGET: u8 = 0x01;
 pub const SYSIDLE: u8 = 0x40;
 pub const TGTALL: u8 = 0xFF;
 
+/// Newson command types
 #[derive(Debug, Serialize, PartialEq, Clone)]
 #[serde(into = "u8")]
 #[allow(non_camel_case_types)]
@@ -169,11 +172,14 @@ impl From<CMD3G_OPCODE> for u8 {
     }
 }
 
+/// A 2D position
 #[derive(Debug, PartialEq)]
 pub struct Position {
     x: f64,
     y: f64,
 }
+
+/// A 2D position formatted for a Newson command
 pub struct RawPosition {
     x: u16,
     y: u16,
@@ -194,6 +200,7 @@ impl Position {
     }
 }
 
+/// Turns a Rhothor command into a vector of atomic Newson commands
 fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
     match command {
         RhothorCommand::ListOpen(_) => vec![], //TODO
@@ -321,10 +328,12 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
         RhothorCommand::DoWhile => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::SetLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
         RhothorCommand::DoLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        _ => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        RhothorCommand::SetTarget(_) => vec![], //TODO
+        _ => vec![],
     }
 }
 
+/// Turns a vector of Rhothor commands into a vector of atomic Newson commands
 pub fn build_commandlist(command_vec: &[RhothorCommand]) -> Vec<CMD3G> {
     command_vec
         .iter()
@@ -332,10 +341,12 @@ pub fn build_commandlist(command_vec: &[RhothorCommand]) -> Vec<CMD3G> {
         .collect::<Vec<CMD3G>>()
 }
 
+/// Constructs a request to get status
 pub fn get_status() -> Vec<CMD3G> {
     vec![CMD3G::new(0, 0x2C, 0, 0, CMD3G_OPCODE::INTSTATUS, TARGET)]
 }
 
+/// Constructs a request to get target ID
 pub fn get_target_id() -> Vec<CMD3G> {
     vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::INTGTID, 0)]
 }

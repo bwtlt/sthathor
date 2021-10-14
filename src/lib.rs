@@ -33,12 +33,14 @@ pub use crate::commands::TgtStatus;
 pub use crate::commands::CMD3G;
 pub use crate::parsing::RhothorCommand;
 
+/// Queries Newson target for status (positions, inputs/outputs state, etc.)
 pub fn get_status(stream: &mut TcpStream) -> std::io::Result<TgtStatus> {
     let reply = exchange(&commands::get_status(), stream).unwrap();
     let status: TgtStatus = bincode::deserialize(&reply).unwrap();
     Ok(status)
 }
 
+/// Sends a query and reads a reply
 pub fn exchange(queries: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
     send(queries, stream)?;
     let mut reply = [0_u8; 128];
@@ -46,11 +48,13 @@ pub fn exchange(queries: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<Ve
     Ok(reply[..n].to_vec())
 }
 
+/// Sends commands to Newson target
 pub fn send(commands: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<()> {
     stream.write_all(&serialize_commands(commands))?;
     Ok(())
 }
 
+/// Turns a vector of commands into a vector of bytes to be sent
 fn serialize_commands(commands: &[CMD3G]) -> Vec<u8> {
     let mut buffer = Vec::new();
     commands.iter().for_each(|q| {
@@ -64,6 +68,7 @@ fn serialize_commands(commands: &[CMD3G]) -> Vec<u8> {
     buffer
 }
 
+/// Creates a vector of commands from a text file
 pub fn parse_command_file(path: &str) -> Result<Vec<RhothorCommand>, AppError> {
     let file = File::open(path)?;
     let mut commands = Vec::new();
