@@ -1,3 +1,4 @@
+use bincode::Options;
 use std::fmt;
 use std::fs::File;
 use std::io::prelude::*;
@@ -39,14 +40,28 @@ pub fn get_status(stream: &mut TcpStream) -> std::io::Result<TgtStatus> {
 }
 
 pub fn exchange(queries: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<Vec<u8>> {
-    let mut buffer = Vec::new();
-    queries
-        .iter()
-        .for_each(|q| buffer.append(&mut bincode::serialize(q).unwrap()));
-    stream.write_all(&buffer)?;
+    send(queries, stream)?;
     let mut reply = [0_u8; 128];
     let n = stream.read(&mut reply)?;
     Ok(reply[..n].to_vec())
+}
+
+pub fn send(commands: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<()> {
+    stream.write_all(&serialize_commands(commands))?;
+    Ok(())
+}
+
+fn serialize_commands(commands: &[CMD3G]) -> Vec<u8> {
+    let mut buffer = Vec::new();
+    commands.iter().for_each(|q| {
+        buffer.append(
+            &mut bincode::DefaultOptions::new()
+                .with_fixint_encoding()
+                .serialize(q)
+                .unwrap(),
+        )
+    });
+    buffer
 }
 
 pub fn parse_command_file(path: &str) -> Result<Vec<RhothorCommand>, AppError> {
@@ -77,6 +92,18 @@ mod tests {
             RhothorCommand::ListClose,
         ];
         commands
+            .iter()
+            .zip(want.iter())
+            .for_each(|(got, want)| assert_eq!(got, want));
+    }
+
+    #[test]
+    fn test_serialize() {
+        let q = vec![CMD3G::new(0, 0, 0, 0, commands::CMD3G_OPCODE::INTGTID, 0)];
+        let want = vec![0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0xC5, 0x00];
+        let buffer = serialize_commands(&q);
+        assert_eq!(buffer.len(), want.len());
+        buffer
             .iter()
             .zip(want.iter())
             .for_each(|(got, want)| assert_eq!(got, want));

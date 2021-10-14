@@ -61,8 +61,10 @@ pub const TARGET: u8 = 0x01;
 pub const SYSIDLE: u8 = 0x40;
 pub const TGTALL: u8 = 0xFF;
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
+#[serde(into = "u8")]
 #[allow(non_camel_case_types)]
+#[repr(u8)]
 pub enum CMD3G_OPCODE {
     CMD3G_NOP = 0x00,
     CMD3G_SETIO = 0x02,
@@ -160,6 +162,11 @@ pub enum CMD3G_OPCODE {
     INTUARTREAD = 0xc7,
     INTSCANREAD = 0xc8,
     INTGETIP = 0xc9,
+}
+impl From<CMD3G_OPCODE> for u8 {
+    fn from(value: CMD3G_OPCODE) -> u8 {
+        value as u8
+    }
 }
 
 #[derive(Debug, PartialEq)]
