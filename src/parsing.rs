@@ -3,9 +3,9 @@ use crate::AppError;
 use regex::Regex;
 use std::str::FromStr;
 
-/// Representation of a Rhothor command with its parameters
+/// Representation of a scanner command with its parameters
 #[derive(Debug, PartialEq)]
-pub enum RhothorCommand {
+pub enum ScannerCommand {
     None,
     ListOpen(u32),
     ListClose,
@@ -30,8 +30,8 @@ pub enum RhothorCommand {
     SetLoop,
     DoLoop,
 }
-/// Parse a Rhothor command string (e.g. "rtMoveTo(3.0, 4.5)") into the corresponding enum
-impl FromStr for RhothorCommand {
+/// Parse a scanner command string (e.g. "rtMoveTo(3.0, 4.5)") into the corresponding enum
+impl FromStr for ScannerCommand {
     type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, AppError> {
@@ -67,14 +67,14 @@ impl FromStr for RhothorCommand {
         let caps = re.captures(s).unwrap();
         let args = caps.name("args").unwrap().as_str();
         let command = match caps.name("command").unwrap().as_str() {
-            "rtListOpen" => RhothorCommand::ListOpen(parse_int(args)?),
-            "rtListClose" => RhothorCommand::ListClose,
-            "rtJumpTo" => RhothorCommand::Jump(parse_position(args)?),
-            "rtMoveTo" => RhothorCommand::Move(parse_position(args)?),
-            "rtLineTo" => RhothorCommand::Line(parse_position(args)?),
-            "rtSetSpeed" => RhothorCommand::SetSpeed(parse_f32(args)?),
-            "rtSetJumpSpeed" => RhothorCommand::SetJumpSpeed(parse_f32(args)?),
-            "rtSetTarget" => RhothorCommand::SetTarget(parse_int(args)?),
+            "rtListOpen" => ScannerCommand::ListOpen(parse_int(args)?),
+            "rtListClose" => ScannerCommand::ListClose,
+            "rtJumpTo" => ScannerCommand::Jump(parse_position(args)?),
+            "rtMoveTo" => ScannerCommand::Move(parse_position(args)?),
+            "rtLineTo" => ScannerCommand::Line(parse_position(args)?),
+            "rtSetSpeed" => ScannerCommand::SetSpeed(parse_f32(args)?),
+            "rtSetJumpSpeed" => ScannerCommand::SetJumpSpeed(parse_f32(args)?),
+            "rtSetTarget" => ScannerCommand::SetTarget(parse_int(args)?),
             _ => return Err(AppError::ParseError),
         };
 
@@ -82,13 +82,13 @@ impl FromStr for RhothorCommand {
     }
 }
 
-/// Parse a Rhothor script line, ditching comments and empty lines
-pub fn parse_line(s: &str) -> Result<Option<RhothorCommand>, AppError> {
+/// Parse a scanner script line, ditching comments and empty lines
+pub fn parse_line(s: &str) -> Result<Option<ScannerCommand>, AppError> {
     let s = s.trim();
     if s.starts_with("//") || s.is_empty() {
         return Ok(None);
     }
-    Ok(Some(RhothorCommand::from_str(s)?))
+    Ok(Some(ScannerCommand::from_str(s)?))
 }
 
 #[cfg(test)]
@@ -98,44 +98,44 @@ mod tests {
     #[test]
     fn parse_command() {
         struct TestCase {
-            got: Result<RhothorCommand, AppError>,
-            want: Result<RhothorCommand, AppError>,
+            got: Result<ScannerCommand, AppError>,
+            want: Result<ScannerCommand, AppError>,
         }
         let test_cases = vec![
             TestCase {
-                got: Ok(RhothorCommand::from_str("rtJumpTo(1234.5,777.42)").unwrap()),
-                want: Ok(RhothorCommand::Jump(Position::new(1234.5, 777.42))),
+                got: Ok(ScannerCommand::from_str("rtJumpTo(1234.5,777.42)").unwrap()),
+                want: Ok(ScannerCommand::Jump(Position::new(1234.5, 777.42))),
             },
             TestCase {
-                got: Ok(RhothorCommand::from_str("rtJumpTo(-1234,777)").unwrap()),
-                want: Ok(RhothorCommand::Jump(Position::new(-1234.0, 777.0))),
+                got: Ok(ScannerCommand::from_str("rtJumpTo(-1234,777)").unwrap()),
+                want: Ok(ScannerCommand::Jump(Position::new(-1234.0, 777.0))),
             },
             TestCase {
-                got: Ok(RhothorCommand::from_str("rtSetSpeed(1200)").unwrap()),
-                want: Ok(RhothorCommand::SetSpeed(1200.0)),
+                got: Ok(ScannerCommand::from_str("rtSetSpeed(1200)").unwrap()),
+                want: Ok(ScannerCommand::SetSpeed(1200.0)),
             },
             TestCase {
-                got: RhothorCommand::from_str("rtSetSpeed()"),
+                got: ScannerCommand::from_str("rtSetSpeed()"),
                 want: Err(AppError::ParseError),
             },
             TestCase {
                 // two many arguments
-                got: RhothorCommand::from_str("rtSetSpeed(1.2, 0)"),
+                got: ScannerCommand::from_str("rtSetSpeed(1.2, 0)"),
                 want: Err(AppError::ParseError),
             },
             TestCase {
                 // two many arguments
-                got: RhothorCommand::from_str("rtJumpTo(1234.5,777.42,4.8)"),
+                got: ScannerCommand::from_str("rtJumpTo(1234.5,777.42,4.8)"),
                 want: Err(AppError::ParseError),
             },
             TestCase {
                 // syntax error
-                got: RhothorCommand::from_str("rtJumpTo(1234.O,4.8)"),
+                got: ScannerCommand::from_str("rtJumpTo(1234.O,4.8)"),
                 want: Err(AppError::ParseError),
             },
             TestCase {
-                got: Ok(RhothorCommand::from_str("rtMoveTo(1.2,7.77)").unwrap()),
-                want: Ok(RhothorCommand::Move(Position::new(1.2, 7.77))),
+                got: Ok(ScannerCommand::from_str("rtMoveTo(1.2,7.77)").unwrap()),
+                want: Ok(ScannerCommand::Move(Position::new(1.2, 7.77))),
             },
         ];
 
@@ -150,7 +150,7 @@ mod tests {
         assert!(parse_line("   ").unwrap().is_none());
         assert_eq!(
             parse_line("rtMoveTo(1.2,3.4)").unwrap().unwrap(),
-            RhothorCommand::Move(Position::new(1.2, 3.4))
+            ScannerCommand::Move(Position::new(1.2, 3.4))
         );
     }
 }

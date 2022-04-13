@@ -1,4 +1,4 @@
-use crate::parsing::RhothorCommand;
+use crate::parsing::ScannerCommand;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -210,19 +210,19 @@ impl Position {
     }
 }
 
-/// Turns a Rhothor command into a vector of atomic Newson commands
-fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
+/// Turns a scanner command into a vector of atomic CMD3G commands
+fn build_command(command: &ScannerCommand) -> Vec<CMD3G> {
     match command {
-        RhothorCommand::ListOpen(_) => vec![], //TODO
-        RhothorCommand::ListClose => vec![],   //TODO
-        RhothorCommand::Jump(pos) => {
+        ScannerCommand::ListOpen(_) => vec![], //TODO
+        ScannerCommand::ListClose => vec![],   //TODO
+        ScannerCommand::Jump(pos) => {
             vec![CMD3G::new_movement(
                 &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_JUMPTO,
                 TARGET,
             )]
         }
-        RhothorCommand::SetIO(value, mask) => vec![CMD3G::new(
+        ScannerCommand::SetIO(value, mask) => vec![CMD3G::new(
             *value,
             *mask,
             0,
@@ -230,7 +230,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SETIO,
             TARGET,
         )],
-        RhothorCommand::SetAnalog(value, mask) => vec![CMD3G::new(
+        ScannerCommand::SetAnalog(value, mask) => vec![CMD3G::new(
             *value,
             *mask,
             0,
@@ -238,7 +238,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SETANA,
             TARGET,
         )],
-        RhothorCommand::Arc(center, bf) => {
+        ScannerCommand::Arc(center, bf) => {
             if bf.abs() < 0.000001 {
                 return vec![CMD3G::new_movement(
                     &center.to_raw(),
@@ -258,7 +258,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
                 ),
             ]
         }
-        RhothorCommand::Circle(center, angle) => {
+        ScannerCommand::Circle(center, angle) => {
             vec![
                 CMD3G::new_movement(&center.to_raw(), CMD3G_OPCODE::CMD3G_CIRCLE, TARGET),
                 CMD3G::new(
@@ -271,22 +271,22 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
                 ),
             ]
         }
-        RhothorCommand::Line(pos) => {
+        ScannerCommand::Line(pos) => {
             vec![CMD3G::new_movement(
                 &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_LINETO,
                 TARGET,
             )]
         }
-        RhothorCommand::WaitIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::Move(pos) => {
+        ScannerCommand::WaitIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        ScannerCommand::Move(pos) => {
             vec![CMD3G::new_movement(
                 &pos.to_raw(),
                 CMD3G_OPCODE::CMD3G_MOVETO,
                 TARGET,
             )]
         }
-        RhothorCommand::SetSpeed(speed) => vec![CMD3G::new(
+        ScannerCommand::SetSpeed(speed) => vec![CMD3G::new(
             (speed.to_bits() & 0xFFFF) as u16,
             ((speed.to_bits() & 0xFFFF0000) >> 16) as u16,
             0,
@@ -294,7 +294,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SPEED,
             TARGET,
         )],
-        RhothorCommand::SetJumpSpeed(speed) => vec![CMD3G::new(
+        ScannerCommand::SetJumpSpeed(speed) => vec![CMD3G::new(
             (speed.to_bits() & 0xFFFF) as u16,
             ((speed.to_bits() & 0xFFFF0000) >> 16) as u16,
             0,
@@ -302,7 +302,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_JUMPSPEED,
             TARGET,
         )],
-        RhothorCommand::Sleep(time) => vec![CMD3G::new(
+        ScannerCommand::Sleep(time) => vec![CMD3G::new(
             *time,
             0,
             0,
@@ -310,7 +310,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SLEEP,
             TARGET,
         )],
-        RhothorCommand::Burst(time) => vec![CMD3G::new(
+        ScannerCommand::Burst(time) => vec![CMD3G::new(
             *time,
             0,
             0,
@@ -318,7 +318,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_BURST,
             TARGET,
         )],
-        RhothorCommand::SetLaser(on) => vec![CMD3G::new(
+        ScannerCommand::SetLaser(on) => vec![CMD3G::new(
             *on as u16,
             0,
             0,
@@ -326,7 +326,7 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SETLIDLE,
             TARGET,
         )],
-        RhothorCommand::SetLaserTimes(on_delay, off_delay) => vec![CMD3G::new(
+        ScannerCommand::SetLaserTimes(on_delay, off_delay) => vec![CMD3G::new(
             *on_delay,
             *off_delay,
             0,
@@ -334,17 +334,17 @@ fn build_command(command: &RhothorCommand) -> Vec<CMD3G> {
             CMD3G_OPCODE::CMD3G_SETDELAYS,
             TARGET,
         )],
-        RhothorCommand::WhileIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::DoWhile => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::SetLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::DoLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
-        RhothorCommand::SetTarget(_) => vec![], //TODO
+        ScannerCommand::WhileIO => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        ScannerCommand::DoWhile => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        ScannerCommand::SetLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        ScannerCommand::DoLoop => vec![CMD3G::new(0, 0, 0, 0, CMD3G_OPCODE::CMD3G_NOP, 0)],
+        ScannerCommand::SetTarget(_) => vec![], //TODO
         _ => vec![],
     }
 }
 
-/// Turns a vector of Rhothor commands into a vector of atomic Newson commands
-pub fn build_commandlist(command_vec: &[RhothorCommand]) -> Vec<CMD3G> {
+/// Turns a vector of scanner commands into a vector of atomic CMD3G commands
+pub fn build_commandlist(command_vec: &[ScannerCommand]) -> Vec<CMD3G> {
     command_vec
         .iter()
         .flat_map(|cmd| build_command(cmd))
@@ -368,12 +368,12 @@ mod tests {
     #[test]
     fn build_commands() {
         struct TestCase {
-            rhothor_cmd: RhothorCommand,
+            scanner_cmd: ScannerCommand,
             cmd3g_cmd: Vec<CMD3G>,
         }
         let test_cases = vec![
             TestCase {
-                rhothor_cmd: RhothorCommand::Jump(Position::new(1.2, 3.4)),
+                scanner_cmd: ScannerCommand::Jump(Position::new(1.2, 3.4)),
                 cmd3g_cmd: vec![CMD3G::new(
                     1200,
                     3400,
@@ -384,7 +384,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Move(Position::new(-1.2, -3.4)),
+                scanner_cmd: ScannerCommand::Move(Position::new(-1.2, -3.4)),
                 cmd3g_cmd: vec![CMD3G::new(
                     64336,
                     62136,
@@ -395,7 +395,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Line(Position::new(-0.2, 6.0)),
+                scanner_cmd: ScannerCommand::Line(Position::new(-0.2, 6.0)),
                 cmd3g_cmd: vec![CMD3G::new(
                     65336,
                     6000,
@@ -406,7 +406,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::SetSpeed(1200.0),
+                scanner_cmd: ScannerCommand::SetSpeed(1200.0),
                 cmd3g_cmd: vec![CMD3G::new(
                     0,
                     0x4496,
@@ -417,7 +417,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::SetJumpSpeed(600.0),
+                scanner_cmd: ScannerCommand::SetJumpSpeed(600.0),
                 cmd3g_cmd: vec![CMD3G::new(
                     0,
                     0x4416,
@@ -428,21 +428,21 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Circle(Position::new(-0.5, 0.5), 360.0),
+                scanner_cmd: ScannerCommand::Circle(Position::new(-0.5, 0.5), 360.0),
                 cmd3g_cmd: vec![
                     CMD3G::new(0xFE0C, 500, 0xFF, 0, CMD3G_OPCODE::CMD3G_CIRCLE, TARGET),
                     CMD3G::new(0, 0x43B4, 0, 0, CMD3G_OPCODE::CMD3G_PARAMS, TARGET),
                 ],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Arc(Position::new(-0.5, 0.5), 360.0),
+                scanner_cmd: ScannerCommand::Arc(Position::new(-0.5, 0.5), 360.0),
                 cmd3g_cmd: vec![
                     CMD3G::new(0xFE0C, 500, 0xFF, 0, CMD3G_OPCODE::CMD3G_ARCLINE, TARGET),
                     CMD3G::new(0x43B4, 0, 0, 0, CMD3G_OPCODE::CMD3G_PARAMS, TARGET),
                 ],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Arc(Position::new(-0.5, 0.5), 0.0000001),
+                scanner_cmd: ScannerCommand::Arc(Position::new(-0.5, 0.5), 0.0000001),
                 cmd3g_cmd: vec![CMD3G::new(
                     0xFE0C,
                     500,
@@ -453,7 +453,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::SetIO(512, 1024),
+                scanner_cmd: ScannerCommand::SetIO(512, 1024),
                 cmd3g_cmd: vec![CMD3G::new(
                     512,
                     1024,
@@ -464,7 +464,7 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::SetAnalog(1024, 512),
+                scanner_cmd: ScannerCommand::SetAnalog(1024, 512),
                 cmd3g_cmd: vec![CMD3G::new(
                     1024,
                     512,
@@ -475,12 +475,12 @@ mod tests {
                 )],
             },
             TestCase {
-                rhothor_cmd: RhothorCommand::Sleep(500),
+                scanner_cmd: ScannerCommand::Sleep(500),
                 cmd3g_cmd: vec![CMD3G::new(500, 0, 0, 0, CMD3G_OPCODE::CMD3G_SLEEP, TARGET)],
             },
         ];
         for test in test_cases {
-            let got = build_command(&test.rhothor_cmd);
+            let got = build_command(&test.scanner_cmd);
             assert_eq!(got.len(), test.cmd3g_cmd.len());
             assert!(
                 got.iter().zip(test.cmd3g_cmd.iter()).all(|(a, b)| a == b),

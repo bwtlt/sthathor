@@ -6,14 +6,14 @@ use std::net::SocketAddr;
 use std::net::{Shutdown, TcpStream};
 use std::time::Duration;
 
-use rusthor::commands;
-use rusthor::*;
+use sthathor::commands;
+use sthathor::*;
 
 fn main() -> Result<(), Box<dyn Error>> {
-    let matches = App::new("rusthor")
+    let matches = App::new("sthathor")
         .version(crate_version!())
         .author("bwatelet")
-        .about("Rhothor clone in Rust.")
+        .about("A CLI app to control Newson™ scanners")
         .arg(
             Arg::with_name("IP_ADDRESS")
                 .help("Scanners IP address, e.g. 192.168.0.6")
@@ -25,7 +25,7 @@ fn main() -> Result<(), Box<dyn Error>> {
                 .short("f")
                 .long("file")
                 .value_name("FILE")
-                .help("Load a Rhothor commands file")
+                .help("Load a rhothor™ commands file")
                 .takes_value(true),
         )
         .get_matches();

@@ -31,7 +31,7 @@ pub mod commands;
 mod parsing;
 pub use crate::commands::TgtStatus;
 pub use crate::commands::CMD3G;
-pub use crate::parsing::RhothorCommand;
+pub use crate::parsing::ScannerCommand;
 
 /// Queries Newson target for status (positions, inputs/outputs state, etc.)
 pub fn get_status(stream: &mut TcpStream) -> std::io::Result<TgtStatus> {
@@ -72,7 +72,7 @@ fn serialize_commands(commands: &[CMD3G]) -> Vec<u8> {
 }
 
 /// Creates a vector of commands from a text file
-pub fn parse_command_file(path: &str) -> Result<Vec<RhothorCommand>, AppError> {
+pub fn parse_command_file(path: &str) -> Result<Vec<ScannerCommand>, AppError> {
     let file = File::open(path)?;
     let mut commands = Vec::new();
     for line in BufReader::new(file).lines() {
@@ -92,12 +92,12 @@ mod tests {
     fn parse_file() {
         let commands = parse_command_file("resources/commands.txt").unwrap();
         let want = vec![
-            RhothorCommand::ListOpen(4),
-            RhothorCommand::SetJumpSpeed(1200.0),
-            RhothorCommand::SetSpeed(1200.0),
-            RhothorCommand::Jump(Position::new(-6.0, -6.0)),
-            RhothorCommand::Line(Position::new(6.0, 6.0)),
-            RhothorCommand::ListClose,
+            ScannerCommand::ListOpen(4),
+            ScannerCommand::SetJumpSpeed(1200.0),
+            ScannerCommand::SetSpeed(1200.0),
+            ScannerCommand::Jump(Position::new(-6.0, -6.0)),
+            ScannerCommand::Line(Position::new(6.0, 6.0)),
+            ScannerCommand::ListClose,
         ];
         commands
             .iter()
