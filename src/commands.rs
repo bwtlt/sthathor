@@ -3,7 +3,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 /// Atomic Newson command
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Serialize, PartialEq, Clone)]
 pub struct CMD3G {
     x: u16,
     y: u16,
@@ -21,6 +21,16 @@ impl CMD3G {
             yh,
             op_code,
             target,
+        }
+    }
+    pub fn new_empty() -> CMD3G {
+        CMD3G {
+            x: 0,
+            y: 0,
+            xh: 0,
+            yh: 0,
+            op_code: CMD3G_OPCODE::CMD3G_NOP,
+            target: 0,
         }
     }
     pub fn new_movement(pos: &RawPosition, op_code: CMD3G_OPCODE, target: u8) -> CMD3G {

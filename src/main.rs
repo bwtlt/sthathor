@@ -39,11 +39,6 @@ fn main() -> Result<(), Box<dyn Error>> {
     let socket_address = SocketAddr::new(IpAddr::V4(ip_address), port);
     let mut stream = TcpStream::connect_timeout(&socket_address, Duration::new(5, 0))?;
 
-    let reply = exchange(&commands::get_target_id(), &mut stream)?;
-    println!("reply: {:?}", reply);
-
-    println!("Status: {:?}", get_status(&mut stream)?);
-
     if matches.is_present("COMMANDS_FILE") {
         let command_list = commands::build_commandlist(&parse_command_file(
             matches.value_of("COMMANDS_FILE").unwrap(),

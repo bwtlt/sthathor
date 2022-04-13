@@ -50,7 +50,10 @@ pub fn exchange(queries: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<Ve
 
 /// Sends commands to Newson target
 pub fn send(commands: &[CMD3G], stream: &mut TcpStream) -> std::io::Result<()> {
-    stream.write_all(&serialize_commands(commands))?;
+    let mut buffer = serialize_commands(commands);
+    let remainder = buffer.len() % 512;
+    buffer.resize(buffer.len() + 512 - remainder, 0);
+    stream.write_all(&buffer)?;
     Ok(())
 }
 
@@ -89,11 +92,11 @@ mod tests {
     fn parse_file() {
         let commands = parse_command_file("resources/commands.txt").unwrap();
         let want = vec![
-            RhothorCommand::SetTarget(1),
-            RhothorCommand::ListOpen(5),
-            RhothorCommand::SetJumpSpeed(600.0),
-            RhothorCommand::SetSpeed(600.0),
-            RhothorCommand::Jump(Position::new(0.0, -3.0)),
+            RhothorCommand::ListOpen(4),
+            RhothorCommand::SetJumpSpeed(1200.0),
+            RhothorCommand::SetSpeed(1200.0),
+            RhothorCommand::Jump(Position::new(-6.0, -6.0)),
+            RhothorCommand::Line(Position::new(6.0, 6.0)),
             RhothorCommand::ListClose,
         ];
         commands

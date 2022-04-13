@@ -1,11 +1,7 @@
-// Open List
-rtSetTarget(1);
-rtListOpen(5);
-// Configure Speed
-rtSetJumpSpeed(600)
-rtSetSpeed(600)
-
-rtJumpTo(0,-3);
-
-rtListClose();
-
+rtListOpen(4); // open queue in compilation mode
+rtSetJumpSpeed(1200); // set jump speed
+rtSetSpeed(1200); // set marking speed
+rtJumpTo(-6,-6); // jump to left bottom
+rtLineTo(6,6); // line to left bottom
+//rtJumpTo(0,0); // jump to center
+rtListClose(); // upload compiled queue and start
